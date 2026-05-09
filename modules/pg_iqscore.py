@@ -131,9 +131,11 @@ def show():
             r=ref+[ref[0]], theta=labels+[labels[0]], fill='toself', name='Target 75',
             line=dict(color='#ffd700',width=1,dash='dot'), fillcolor='rgba(255,215,0,0.04)'
         ))
+        h = mc.lstrip('#')
+        rv,gv,bv = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
         fig2.add_trace(go.Scatterpolar(
             r=vals+[vals[0]], theta=labels+[labels[0]], fill='toself', name='Aktual',
-            line=dict(color=mc,width=2.5), fillcolor=f'{mc}22'
+            line=dict(color=mc,width=2.5), fillcolor=f'rgba({rv},{gv},{bv},0.15)'
         ))
         lay = plotly_layout()
         lay.update(polar=dict(
