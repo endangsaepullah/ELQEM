@@ -145,6 +145,24 @@ def init_database():
         created_at TEXT DEFAULT (datetime('now'))
     )""")
 
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS about_platform (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT UNIQUE NOT NULL,
+        value TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+    )""")
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS about_photo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT,
+        photo_data BLOB,
+        mime_type TEXT DEFAULT 'image/jpeg',
+        uploaded_at TEXT DEFAULT (datetime('now'))
+    )""")
+
     conn.commit()
     conn.close()
 
