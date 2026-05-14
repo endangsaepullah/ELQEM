@@ -163,6 +163,16 @@ def init_database():
         uploaded_at TEXT DEFAULT (datetime('now'))
     )""")
 
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS login_logo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT,
+        logo_data BLOB,
+        mime_type TEXT DEFAULT 'image/png',
+        uploaded_at TEXT DEFAULT (datetime('now'))
+    )""")
+
     conn.commit()
     conn.close()
 
