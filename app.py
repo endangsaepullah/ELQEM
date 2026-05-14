@@ -78,6 +78,7 @@ with st.sidebar:
         ("📦 Evaluasi Batch",           "batch"),
         ("🎯 Integrated Quality Score", "iqscore"),
         ("💬 Data Wawancara",           "interview"),
+        ("👤 About Platform",             "about"),
         ("📚 Teori & Referensi",         "theory"),
         ("👥 Manajemen User",           "users"),
     ]
@@ -116,6 +117,8 @@ elif p == "interview":
     from modules.pg_interview import show
 elif p == "users":
     from modules.pg_users import show
+elif p == "about":
+    from modules.pg_about import show
 elif p == "theory":
     from modules.pg_theory import show
 else:
