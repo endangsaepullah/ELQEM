@@ -420,8 +420,56 @@ def show():
 
     st.markdown("---")
 
-    # ══ SECTION 6 — Edit Profil (Admin) ══════════════════
+    # ══ SECTION 6 — Admin Panel ═══════════════
     if is_admin():
+
+        with st.expander("Ganti Logo Halaman Login [Admin Only]", expanded=False):
+            from utils.auth import get_login_logo_b64, save_login_logo, delete_login_logo
+            current_logo = get_login_logo_b64()
+            lc1, lc2 = st.columns([1, 2])
+            with lc1:
+                if current_logo:
+                    st.markdown(
+                        '<p style="font-size:0.7rem;color:#4a6fa5;letter-spacing:1px;'
+                        'text-transform:uppercase;margin-bottom:6px;">Logo Aktif</p>',
+                        unsafe_allow_html=True)
+                    st.markdown(
+                        '<img src="' + current_logo + '"'
+                        ' style="width:100%;max-width:150px;border-radius:12px;'
+                        'border:1px solid rgba(0,212,255,0.3);display:block;">',
+                        unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("Hapus Logo (kembali ke default)", key="del_logo"):
+                        delete_login_logo()
+                        st.success("Logo dihapus.")
+                        st.rerun()
+                else:
+                    st.markdown(
+                        '<div style="padding:1rem;background:#0d1321;'
+                        'border:1px dashed rgba(0,212,255,0.2);border-radius:8px;'
+                        'text-align:center;font-size:0.8rem;color:#4a6fa5;">'
+                        'Belum ada logo. Menggunakan ikon default.</div>',
+                        unsafe_allow_html=True)
+            with lc2:
+                st.markdown(
+                    '<p style="font-size:0.78rem;color:#c5d5e8;line-height:1.6;">'
+                    'Upload PNG/JPG untuk menggantikan ikon di halaman login. '
+                    'Gunakan gambar persegi (1:1) atau PNG transparan untuk hasil terbaik.'
+                    'Ukuran tampil: 120x120px.</p>',
+                    unsafe_allow_html=True)
+                logo_file = st.file_uploader(
+                    "Upload Logo (PNG/JPG, maks 2MB)",
+                    type=["png","jpg","jpeg"],
+                    key="login_logo_uploader")
+                if logo_file:
+                    if logo_file.size > 2 * 1024 * 1024:
+                        st.error("Ukuran file melebihi 2MB.")
+                    else:
+                        mime = "image/png" if logo_file.name.endswith(".png") else "image/jpeg"
+                        save_login_logo(logo_file.read(), mime, logo_file.name)
+                        st.success("Logo berhasil disimpan! Akan tampil di halaman login.")
+                        st.rerun()
+
         with st.expander("Edit Teks Profil [Admin Only]", expanded=False):
             st.info("Perubahan disimpan ke database dan langsung aktif.")
             with st.form("edit_about_form"):
@@ -440,7 +488,6 @@ def show():
                             db_set(k, v.strip())
                     st.success("Profil berhasil disimpan!")
                     st.rerun()
-
     # ══ Footer ════════════════════════════════════════════
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
