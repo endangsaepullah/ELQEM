@@ -105,12 +105,14 @@ def show():
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     avg = sum(scores.values())/len(scores)
                     bv  = None if bn.startswith("(") else bn
-                    conn.execute("""
+                    _cur = conn.cursor(); _cur.execute("""
+                    conn.commit()
+                    _cur.close()
                         INSERT INTO quality_consistency
                         (eval_date,batch_number,quality_uniformity,low_defect_rate,
                          inter_batch_stability,low_rework_rate,spec_conformance,
                          average_score,category,evaluator,notes)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (str(ed),bv,scores['quality_uniformity'],scores['low_defect_rate'],
                          scores['inter_batch_stability'],scores['low_rework_rate'],
                          scores['spec_conformance'],avg,get_category(avg),evlr,notes))

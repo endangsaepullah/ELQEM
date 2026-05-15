@@ -124,10 +124,12 @@ def show():
                             dr = round(td/tu*100,2) if tu>0 else 0
                             rr = round(tr/tu*100,2) if tu>0 else 0
                             try:
-                                conn.execute("""INSERT INTO batch_production
+                                _cur = conn.cursor(); _cur.execute("""INSERT INTO batch_production
+                                conn.commit()
+                                _cur.close()
                                     (batch_number,production_date,total_units,total_defect,
                                      total_rework,defect_rate,rework_rate,pic,status,notes)
-                                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                                     (bn,str(pd_),tu,td,tr,dr,rr,pc,st_,nt))
                                 conn.commit()
                                 st.success(f"✅ Batch {bn} disimpan!")
@@ -157,20 +159,27 @@ def show():
                         if upd:
                             dr = round(td/tu*100,2) if tu>0 else 0
                             rr = round(tr/tu*100,2) if tu>0 else 0
-                            conn.execute("""UPDATE batch_production SET
-                                total_units=?,total_defect=?,total_rework=?,
-                                defect_rate=?,rework_rate=?,pic=?,status=?,notes=?,
-                                updated_at=datetime('now') WHERE batch_number=?""",
+                            _cur = conn.cursor(); _cur.execute("""UPDATE batch_production SET
+                            conn.commit()
+                            _cur.close()
+                                total_units=%s,total_defect=%s,total_rework=%s,
+                                defect_rate=%s,rework_rate=%s,pic=%s,status=%s,notes=%s,
+                                updated_at=to_char(now(),'YYYY-MM-DD HH24:MI:SS') WHERE batch_number=%s""",
                                 (tu,td,tr,dr,rr,pc,st_,nt,sel))
                             conn.commit()
                             st.success("✅ Diupdate!")
                             st.rerun()
                         if dlt:
-                            bid = conn.execute("SELECT id FROM batch_production WHERE batch_number=?",(sel,)).fetchone()
-                            if bid:
-                                conn.execute("DELETE FROM defect_records WHERE batch_id=?",(bid[0],))
-                            conn.execute("DELETE FROM batch_production WHERE batch_number=?",(sel,))
+                            bid = _cur = conn.cursor(); _cur.execute("SELECT id FROM batch_production WHERE batch_number=%s",(sel,)).fetchone()
                             conn.commit()
+                            _cur.close()
+                            if bid:
+                                _cur = conn.cursor(); _cur.execute("DELETE FROM defect_records WHERE batch_id=%s",(bid[0],))
+                                conn.commit()
+                                _cur.close()
+                            _cur = conn.cursor(); _cur.execute("DELETE FROM batch_production WHERE batch_number=%s",(sel,))
+                            conn.commit()
+                            _cur.close()
                             st.warning(f"🗑️ {sel} dihapus.")
                             st.rerun()
 
@@ -196,10 +205,12 @@ def show():
                         fus = st.selectbox("Status", ['Open','In Progress','Closed'])
                     if st.form_submit_button("💾 Simpan Defect", use_container_width=True, type="primary"):
                         bid_row = batch_df[batch_df['batch_number']==sb].iloc[0]
-                        conn.execute("""INSERT INTO defect_records
+                        _cur = conn.cursor(); _cur.execute("""INSERT INTO defect_records
+                        conn.commit()
+                        _cur.close()
                             (batch_id,batch_number,defect_type,defect_stage,quantity,
                              root_cause,corrective_action,pic,follow_up_status,found_date)
-                            VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                             (int(bid_row['id']),sb,dt,ds,qty,rc,ca_,pic,fus,str(fd_)))
                         conn.commit()
                         st.success(f"✅ Defect disimpan untuk {sb}!")

@@ -100,12 +100,14 @@ def show():
                     avg = sum(scores.values())/len(scores)
                     cat = get_category(avg)
                     bv  = None if bn.startswith("(") else bn
-                    conn.execute("""
+                    _cur = conn.cursor(); _cur.execute("""
+                    conn.commit()
+                    _cur.close()
                         INSERT INTO iso9001_evaluation
                         (eval_date,batch_number,process_documentation,process_control,
                          internal_audit,corrective_action,continuous_improvement,
                          average_score,category,evaluator,notes)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (str(ed),bv,scores['process_documentation'],scores['process_control'],
                          scores['internal_audit'],scores['corrective_action'],
                          scores['continuous_improvement'],avg,cat,evlr,notes))

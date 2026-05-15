@@ -3,8 +3,8 @@ import base64
 from utils.database import get_connection
 from utils.styles import section_header
 from utils.auth import is_admin
+from psycopg2 import Binary
 
-# ── Static profile data ────────────────────────────────────
 PROFILE = {
     "name":        "Endang Saefullah, ST, CLA",
     "title":       "Quality Management System Engineer",
@@ -45,15 +45,14 @@ DEFAULT = {
     ),
 }
 
-# ── DB helpers ─────────────────────────────────────────────
 
 def db_get(key, default=""):
     try:
         conn = get_connection()
-        row = conn.execute(
-            "SELECT value FROM about_platform WHERE key=?", (key,)
-        ).fetchone()
-        conn.close()
+        c = conn.cursor()
+        c.execute("SELECT value FROM about_platform WHERE key=%s", (key,))
+        row = c.fetchone()
+        c.close(); conn.close()
         return row["value"] if (row and row["value"]) else default
     except Exception:
         return default
@@ -61,24 +60,25 @@ def db_get(key, default=""):
 
 def db_set(key, value):
     conn = get_connection()
-    conn.execute(
-        "INSERT INTO about_platform (key,value) VALUES(?,?) "
-        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')",
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO about_platform (key,value) VALUES(%s,%s) "
+        "ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
         (key, value)
     )
     conn.commit()
-    conn.close()
+    c.close(); conn.close()
 
 
 def get_photo_b64():
     try:
         conn = get_connection()
-        row = conn.execute(
-            "SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
+        c = conn.cursor()
+        c.execute("SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
+        row = c.fetchone()
+        c.close(); conn.close()
         if row and row["photo_data"]:
-            b64 = base64.b64encode(row["photo_data"]).decode()
+            b64 = base64.b64encode(bytes(row["photo_data"])).decode()
             return "data:" + row["mime_type"] + ";base64," + b64
     except Exception:
         pass
@@ -87,27 +87,27 @@ def get_photo_b64():
 
 def save_photo(file_bytes, mime_type, filename):
     conn = get_connection()
-    conn.execute("DELETE FROM about_photo")
-    conn.execute(
-        "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(?,?,?)",
-        (filename, file_bytes, mime_type)
+    c = conn.cursor()
+    c.execute("DELETE FROM about_photo")
+    c.execute(
+        "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(%s,%s,%s)",
+        (filename, Binary(file_bytes), mime_type)
     )
     conn.commit()
-    conn.close()
+    c.close(); conn.close()
 
-# ── Helpers: small HTML blocks (no nested f-strings) ───────
 
 def _label(text):
     return (
-        '<p style="font-size:0.65rem;color:#4a6fa5;letter-spacing:1px;'
+        '<p style="font-size:0.65rem;color:#4a6fa5;letter-spacing:1px;' +
         'text-transform:uppercase;margin:0 0 3px 0;">' + text + "</p>"
     )
 
 
 def _value(text, color="#c5d5e8"):
     return (
-        '<p style="font-size:0.85rem;color:' + color + ';margin:0 0 0.75rem 0;">'
-        + text + "</p>"
+        '<p style="font-size:0.85rem;color:' + color + ';margin:0 0 0.75rem 0;">' +
+        text + "</p>"
     )
 
 
@@ -118,24 +118,19 @@ def _badge(text, color="#00d4ff"):
         "border:1px solid rgba(0,212,255,0.35);"
         "border-radius:4px;padding:2px 10px;"
         "font-size:0.72rem;color:" + color + ";"
-        "font-family:Rajdhani,sans-serif;"
-        "font-weight:700;letter-spacing:1px;"
+        "font-family:Rajdhani,sans-serif;font-weight:700;letter-spacing:1px;"
     )
     return "<span style='" + style + "'>" + text + "</span>"
 
 
 def _card(content, border_color="#00d4ff", extra_style=""):
     style = (
-        "padding:0.85rem 1.1rem;"
-        "background:#111827;"
+        "padding:0.85rem 1.1rem;background:#111827;"
         "border:1px solid rgba(0,212,255,0.15);"
         "border-left:3px solid " + border_color + ";"
         "border-radius:8px;margin-bottom:0.5rem;" + extra_style
     )
     return "<div style='" + style + "'>" + content + "</div>"
-
-
-# ── Main ───────────────────────────────────────────────────
 
 def show():
     section_header(
