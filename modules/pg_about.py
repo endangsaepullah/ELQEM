@@ -76,9 +76,11 @@ def get_photo_b64():
         c = conn.cursor()
         c.execute("SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
         row = c.fetchone()
-        c.close(); conn.close()
+        c.close()
+        conn.close()
         if row and row["photo_data"]:
-            b64 = base64.b64encode(bytes(row["photo_data"])).decode()
+            data = bytes(row["photo_data"])
+            b64 = base64.b64encode(data).decode()
             return "data:" + row["mime_type"] + ";base64," + b64
     except Exception:
         pass
@@ -86,15 +88,17 @@ def get_photo_b64():
 
 
 def save_photo(file_bytes, mime_type, filename):
+    from psycopg2 import Binary as PgBinary
     conn = get_connection()
     c = conn.cursor()
     c.execute("DELETE FROM about_photo")
     c.execute(
         "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(%s,%s,%s)",
-        (filename, Binary(file_bytes), mime_type)
+        (filename, PgBinary(file_bytes), mime_type)
     )
     conn.commit()
-    c.close(); conn.close()
+    c.close()
+    conn.close()
 
 
 def _label(text):
