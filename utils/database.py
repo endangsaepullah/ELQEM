@@ -1,31 +1,48 @@
 """
 database.py — koneksi ke Supabase PostgreSQL
-Persistent: data tidak hilang saat Streamlit Cloud restart.
+Data tersimpan permanen di Supabase, tidak hilang saat Streamlit Cloud restart.
 """
 import os
 import psycopg2
 import psycopg2.extras
-from contextlib import contextmanager
 
-# ── Connection ─────────────────────────────────────────────
+
 def _get_db_url():
-    """Ambil DATABASE_URL dari Streamlit secrets atau env."""
+    """Ambil DATABASE_URL dari Streamlit secrets."""
     try:
         import streamlit as st
-        return st.secrets["DATABASE_URL"]
+        url = st.secrets["DATABASE_URL"]
+        if url:
+            return url
     except Exception:
-        return os.environ.get(
-            "DATABASE_URL",
-            "postgresql://postgres:postgres@localhost:5432/postgres"
-        )
+        pass
+    # Fallback dari environment variable
+    return os.environ.get("DATABASE_URL", "")
+
 
 def get_connection():
     url = _get_db_url()
-    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
-    conn.autocommit = False
-    return conn
+    if not url:
+        raise ValueError(
+            "DATABASE_URL tidak ditemukan di Streamlit Secrets. "
+            "Tambahkan DATABASE_URL di Settings > Secrets pada Streamlit Cloud."
+        )
+    try:
+        conn = psycopg2.connect(
+            url,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+            connect_timeout=10,
+            sslmode='require'
+        )
+        conn.autocommit = False
+        return conn
+    except psycopg2.OperationalError as e:
+        raise ConnectionError(
+            f"Gagal terhubung ke database Supabase. "
+            f"Periksa DATABASE_URL di Streamlit Secrets.\nDetail: {e}"
+        )
 
-# ── Init schema ────────────────────────────────────────────
+
 def init_database():
     conn = get_connection()
     c = conn.cursor()
