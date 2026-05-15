@@ -10,45 +10,25 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    :root {
-        --primary-color: #00d4ff;
-        --background-color: #070b14;
-        --secondary-background-color: #0d1321;
-        --text-color: #e8edf5;
-    }
+:root {
+    --primary-color: #00d4ff;
+    --background-color: #070b14;
+    --secondary-background-color: #0d1321;
+    --text-color: #e8edf5;
+}
 </style>
 """, unsafe_allow_html=True)
 
+from utils.database import init_database
+from utils.auth import create_default_admin, login_page, logout, is_admin
+from utils.seed_data import seed_dummy_data
 from utils.styles import apply_global_style
+
+init_database()
+create_default_admin()
+seed_dummy_data()
 apply_global_style()
 
-# ── Database init dengan error handling ────────────────────
-try:
-    from utils.database import init_database
-    from utils.auth import create_default_admin, login_page, logout, is_admin
-    from utils.seed_data import seed_dummy_data
-    init_database()
-    create_default_admin()
-    seed_dummy_data()
-except (ConnectionError, ValueError) as db_err:
-    st.error("Database Error")
-    st.markdown(
-        '''<div style="padding:1.5rem;background:#1a0a0a;border:1px solid #ff3366;
-        border-radius:10px;font-family:monospace;font-size:0.85rem;color:#ff9999;">
-        <b style="color:#ff3366;font-size:1rem;">Koneksi database gagal</b><br><br>
-        Pastikan DATABASE_URL sudah benar di Streamlit Secrets:<br><br>
-        Settings → Secrets → tambahkan:<br>
-        <code>DATABASE_URL = "postgresql://postgres.uiurhlaprvxlyhrrxemv:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"</code>
-        </div>''',
-        unsafe_allow_html=True
-    )
-    st.info(f"Detail error: {db_err}")
-    st.stop()
-except Exception as e:
-    st.error(f"Startup error: {e}")
-    st.stop()
-
-# ── Auth gate ──────────────────────────────────────────────
 if not st.session_state.get('logged_in'):
     login_page()
     st.stop()
@@ -56,7 +36,6 @@ if not st.session_state.get('logged_in'):
 user = st.session_state.get('user', {})
 role = st.session_state.get('role', 'viewer')
 
-# ── Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding:1rem 0 1.5rem;
@@ -95,8 +74,8 @@ with st.sidebar:
         ("📦 Evaluasi Batch",           "batch"),
         ("🎯 Integrated Quality Score", "iqscore"),
         ("💬 Data Wawancara",           "interview"),
-        ("👤 About Platform",             "about"),
-        ("📚 Teori & Referensi",         "theory"),
+        ("👤 About Platform",           "about"),
+        ("📚 Teori & Referensi",        "theory"),
         ("👥 Manajemen User",           "users"),
     ]
 
@@ -113,32 +92,19 @@ with st.sidebar:
     if st.button("🚪 Logout", use_container_width=True):
         logout()
 
-# ── Page routing ───────────────────────────────────────────
 p = st.session_state.page
 
-if p == "home":
-    from modules.pg_home import show
-elif p == "iso9001":
-    from modules.pg_iso9001 import show
-elif p == "iatf":
-    from modules.pg_iatf import show
-elif p == "lifecycle":
-    from modules.pg_lifecycle import show
-elif p == "consistency":
-    from modules.pg_consistency import show
-elif p == "batch":
-    from modules.pg_batch import show
-elif p == "iqscore":
-    from modules.pg_iqscore import show
-elif p == "interview":
-    from modules.pg_interview import show
-elif p == "users":
-    from modules.pg_users import show
-elif p == "about":
-    from modules.pg_about import show
-elif p == "theory":
-    from modules.pg_theory import show
-else:
-    from modules.pg_home import show
+if   p == "home":        from modules.pg_home        import show
+elif p == "iso9001":     from modules.pg_iso9001     import show
+elif p == "iatf":        from modules.pg_iatf        import show
+elif p == "lifecycle":   from modules.pg_lifecycle   import show
+elif p == "consistency": from modules.pg_consistency import show
+elif p == "batch":       from modules.pg_batch       import show
+elif p == "iqscore":     from modules.pg_iqscore     import show
+elif p == "interview":   from modules.pg_interview   import show
+elif p == "about":       from modules.pg_about       import show
+elif p == "theory":      from modules.pg_theory      import show
+elif p == "users":       from modules.pg_users       import show
+else:                    from modules.pg_home        import show
 
 show()
