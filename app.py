@@ -19,17 +19,34 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-os.makedirs("data", exist_ok=True)
-
-from utils.database import init_database
-from utils.auth import create_default_admin, login_page, logout, is_admin
-from utils.seed_data import seed_dummy_data
 from utils.styles import apply_global_style
-
-init_database()
-create_default_admin()
-seed_dummy_data()
 apply_global_style()
+
+# ── Database init dengan error handling ────────────────────
+try:
+    from utils.database import init_database
+    from utils.auth import create_default_admin, login_page, logout, is_admin
+    from utils.seed_data import seed_dummy_data
+    init_database()
+    create_default_admin()
+    seed_dummy_data()
+except (ConnectionError, ValueError) as db_err:
+    st.error("Database Error")
+    st.markdown(
+        '''<div style="padding:1.5rem;background:#1a0a0a;border:1px solid #ff3366;
+        border-radius:10px;font-family:monospace;font-size:0.85rem;color:#ff9999;">
+        <b style="color:#ff3366;font-size:1rem;">Koneksi database gagal</b><br><br>
+        Pastikan DATABASE_URL sudah benar di Streamlit Secrets:<br><br>
+        Settings → Secrets → tambahkan:<br>
+        <code>DATABASE_URL = "postgresql://postgres.uiurhlaprvxlyhrrxemv:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"</code>
+        </div>''',
+        unsafe_allow_html=True
+    )
+    st.info(f"Detail error: {db_err}")
+    st.stop()
+except Exception as e:
+    st.error(f"Startup error: {e}")
+    st.stop()
 
 # ── Auth gate ──────────────────────────────────────────────
 if not st.session_state.get('logged_in'):
