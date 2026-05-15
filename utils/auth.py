@@ -19,41 +19,40 @@ def create_default_admin():
     c.execute("SELECT id FROM users WHERE username = 'admin'")
     if not c.fetchone():
         c.execute(
-            "INSERT INTO users (username, password_hash, full_name, role, email, is_active) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (username,password_hash,full_name,role,email,is_active)"
+            " VALUES (%s,%s,%s,%s,%s,%s)",
             ('admin', hash_password('admin123'), 'Administrator', 'admin', 'admin@pindad.com', 1)
         )
         conn.commit()
-    conn.close()
+    c.close(); conn.close()
 
 
 def authenticate(username: str, password: str):
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,))
+    c.execute("SELECT * FROM users WHERE username = %s AND is_active = 1", (username,))
     user = c.fetchone()
     if user and verify_password(password, user['password_hash']):
-        c.execute("UPDATE users SET last_login = ? WHERE id = ?",
+        c.execute("UPDATE users SET last_login = %s WHERE id = %s",
                   (datetime.now().isoformat(), user['id']))
         conn.commit()
-        conn.close()
+        c.close(); conn.close()
         return dict(user)
-    conn.close()
+    c.close(); conn.close()
     return None
 
 
-# ── Logo helpers ───────────────────────────────────────────
+# ── Login logo helpers ─────────────────────────────────────
 
 def get_login_logo_b64():
-    """Return data-URI string or None if no logo uploaded."""
     try:
         conn = get_connection()
-        row = conn.execute(
-            "SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
+        c = conn.cursor()
+        c.execute("SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
+        row = c.fetchone()
+        c.close(); conn.close()
         if row and row['logo_data']:
-            b64 = base64.b64encode(row['logo_data']).decode()
+            b64 = base64.b64encode(bytes(row['logo_data'])).decode()
             return "data:" + row['mime_type'] + ";base64," + b64
     except Exception:
         pass
@@ -62,32 +61,50 @@ def get_login_logo_b64():
 
 def save_login_logo(file_bytes, mime_type, filename):
     conn = get_connection()
-    conn.execute("DELETE FROM login_logo")
-    conn.execute(
-        "INSERT INTO login_logo (filename, logo_data, mime_type) VALUES (?, ?, ?)",
-        (filename, file_bytes, mime_type)
+    c = conn.cursor()
+    c.execute("DELETE FROM login_logo")
+    c.execute(
+        "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (%s,%s,%s)",
+        (filename, psycopg2_Binary(file_bytes), mime_type)
     )
     conn.commit()
-    conn.close()
+    c.close(); conn.close()
 
 
 def delete_login_logo():
     conn = get_connection()
-    conn.execute("DELETE FROM login_logo")
+    c = conn.cursor()
+    c.execute("DELETE FROM login_logo")
     conn.commit()
-    conn.close()
+    c.close(); conn.close()
+
+
+def _binary(data):
+    from psycopg2 import Binary
+    return Binary(data)
+
+
+def save_login_logo(file_bytes, mime_type, filename):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM login_logo")
+    c.execute(
+        "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (%s,%s,%s)",
+        (filename, _binary(file_bytes), mime_type)
+    )
+    conn.commit()
+    c.close(); conn.close()
 
 
 # ── Login page ─────────────────────────────────────────────
 
 def login_page():
     st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500&display=swap');
-        .stApp { background: #070b14; }
-        </style>
-        """,
+        '<style>'
+        '@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700'
+        '&family=Inter:wght@400;500&display=swap");'
+        '.stApp{background:#070b14;}'
+        '</style>',
         unsafe_allow_html=True
     )
 
@@ -97,50 +114,38 @@ def login_page():
     col1, col2, col3 = st.columns([1, 1.2, 1])
 
     with col2:
-        # ── Logo / icon ─────────────────────────────────────
         if logo_src:
-            # Custom logo — responsive, max 120px, bulat
-            logo_html = (
+            st.markdown(
                 '<div style="text-align:center;margin-bottom:1.25rem;">'
-                '<img src="' + logo_src + '" '
-                'style="width:120px;height:120px;object-fit:contain;'
-                'border-radius:16px;'
+                '<img src="' + logo_src + '" style="width:120px;height:120px;'
+                'object-fit:contain;border-radius:16px;'
                 'box-shadow:0 0 32px rgba(0,212,255,0.25);">'
-                '</div>'
+                '</div>',
+                unsafe_allow_html=True
             )
         else:
-            # Default gear emoji
-            logo_html = (
+            st.markdown(
                 '<div style="text-align:center;margin-bottom:1.25rem;">'
                 '<div style="font-size:3.5rem;line-height:1;">&#9881;&#65039;</div>'
-                '</div>'
+                '</div>',
+                unsafe_allow_html=True
             )
-        st.markdown(logo_html, unsafe_allow_html=True)
 
-        # ── Title ────────────────────────────────────────────
         st.markdown(
             '<div style="text-align:center;margin-bottom:2rem;">'
             '<div style="font-family:Rajdhani,sans-serif;font-size:1.8rem;'
             'font-weight:700;color:#00d4ff;letter-spacing:3px;">IQLE PLATFORM</div>'
             '<div style="font-size:0.7rem;color:#4a6fa5;letter-spacing:3px;'
-            'text-transform:uppercase;margin-top:4px;">PT Pindad (Persero) · Quality 4.0</div>'
+            'text-transform:uppercase;margin-top:4px;">'
+            'PT Pindad (Persero) · Quality 4.0</div>'
             '</div>',
             unsafe_allow_html=True
         )
 
-        # ── Login form ───────────────────────────────────────
         with st.form("login_form"):
-            username = st.text_input(
-                "Username", placeholder="Masukkan username",
-                label_visibility="visible"
-            )
-            password = st.text_input(
-                "Password", type="password", placeholder="Masukkan password",
-                label_visibility="visible"
-            )
-            submitted = st.form_submit_button(
-                "LOGIN", use_container_width=True, type="primary"
-            )
+            username = st.text_input("Username", placeholder="Masukkan username")
+            password = st.text_input("Password", type="password", placeholder="Masukkan password")
+            submitted = st.form_submit_button("LOGIN", use_container_width=True, type="primary")
 
             if submitted:
                 if username and password:
@@ -155,15 +160,13 @@ def login_page():
                 else:
                     st.warning("Harap isi username dan password.")
 
-        # ── Footer text (tanpa hint default password) ────────
         st.markdown(
             '<div style="text-align:center;margin-top:1.25rem;'
             'font-family:Rajdhani,sans-serif;font-size:0.72rem;'
             'color:#3d5470;letter-spacing:2px;line-height:1.8;'
             'text-transform:uppercase;">'
             'IQLE Platform &nbsp;&bull;&nbsp; Prototype Akademik Magister Teknik'
-            '<br>'
-            'PT Pindad (Persero) &nbsp;&bull;&nbsp; Universitas Pertahanan RI'
+            '<br>PT Pindad (Persero) &nbsp;&bull;&nbsp; Universitas Pertahanan RI'
             '</div>',
             unsafe_allow_html=True
         )
