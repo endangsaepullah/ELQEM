@@ -12,8 +12,8 @@ def seed_dummy_data():
     conn = get_connection()
     c = conn.cursor()
 
-    c.execute("SELECT COUNT(*) FROM batch_production")
-    if c.fetchone()['count'] > 0:
+    c.execute("SELECT COUNT(*) AS cnt FROM batch_production")
+    if c.fetchone()['cnt'] > 0:
         c.close(); conn.close()
         return
 

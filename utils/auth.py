@@ -3,6 +3,7 @@ import hashlib
 import base64
 from utils.database import get_connection
 from datetime import datetime
+from psycopg2 import Binary
 
 
 def hash_password(password: str) -> str:
@@ -24,7 +25,8 @@ def create_default_admin():
             ('admin', hash_password('admin123'), 'Administrator', 'admin', 'admin@pindad.com', 1)
         )
         conn.commit()
-    c.close(); conn.close()
+    c.close()
+    conn.close()
 
 
 def authenticate(username: str, password: str):
@@ -36,9 +38,11 @@ def authenticate(username: str, password: str):
         c.execute("UPDATE users SET last_login = %s WHERE id = %s",
                   (datetime.now().isoformat(), user['id']))
         conn.commit()
-        c.close(); conn.close()
+        c.close()
+        conn.close()
         return dict(user)
-    c.close(); conn.close()
+    c.close()
+    conn.close()
     return None
 
 
@@ -50,7 +54,8 @@ def get_login_logo_b64():
         c = conn.cursor()
         c.execute("SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
         row = c.fetchone()
-        c.close(); conn.close()
+        c.close()
+        conn.close()
         if row and row['logo_data']:
             b64 = base64.b64encode(bytes(row['logo_data'])).decode()
             return "data:" + row['mime_type'] + ";base64," + b64
@@ -65,10 +70,11 @@ def save_login_logo(file_bytes, mime_type, filename):
     c.execute("DELETE FROM login_logo")
     c.execute(
         "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (%s,%s,%s)",
-        (filename, psycopg2_Binary(file_bytes), mime_type)
+        (filename, Binary(file_bytes), mime_type)
     )
     conn.commit()
-    c.close(); conn.close()
+    c.close()
+    conn.close()
 
 
 def delete_login_logo():
@@ -76,24 +82,8 @@ def delete_login_logo():
     c = conn.cursor()
     c.execute("DELETE FROM login_logo")
     conn.commit()
-    c.close(); conn.close()
-
-
-def _binary(data):
-    from psycopg2 import Binary
-    return Binary(data)
-
-
-def save_login_logo(file_bytes, mime_type, filename):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("DELETE FROM login_logo")
-    c.execute(
-        "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (%s,%s,%s)",
-        (filename, _binary(file_bytes), mime_type)
-    )
-    conn.commit()
-    c.close(); conn.close()
+    c.close()
+    conn.close()
 
 
 # ── Login page ─────────────────────────────────────────────
@@ -144,9 +134,11 @@ def login_page():
 
         with st.form("login_form"):
             username = st.text_input("Username", placeholder="Masukkan username")
-            password = st.text_input("Password", type="password", placeholder="Masukkan password")
-            submitted = st.form_submit_button("LOGIN", use_container_width=True, type="primary")
-
+            password = st.text_input("Password", type="password",
+                                     placeholder="Masukkan password")
+            submitted = st.form_submit_button(
+                "LOGIN", use_container_width=True, type="primary"
+            )
             if submitted:
                 if username and password:
                     user = authenticate(username, password)
