@@ -163,9 +163,8 @@ def show():
                     avg = sum(scores.values())/len(scores)
                     mat = get_lifecycle_maturity(avg)
                     bv  = None if bn.startswith("(") else bn
-                    _cur = conn.cursor(); _cur.execute("""
-                    conn.commit()
-                    _cur.close()
+                    conn.execute("""
+    conn.commit()
                         INSERT INTO engineering_lifecycle
                         (eval_date,batch_number,design_control,change_control,
                          verification_validation,integration_process,traceability,

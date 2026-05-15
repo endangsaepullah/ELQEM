@@ -50,7 +50,7 @@ def db_get(key, default=""):
     try:
         conn = get_connection()
         c = conn.cursor()
-        c.execute("SELECT value FROM about_platform WHERE key=%s", (key,))
+        c.execute("SELECT value FROM about_platform WHERE key=?", (key,))
         row = c.fetchone()
         c.close(); conn.close()
         return row["value"] if (row and row["value"]) else default

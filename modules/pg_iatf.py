@@ -92,13 +92,12 @@ def show():
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     avg = sum(scores.values())/len(scores)
                     bv  = None if bn.startswith("(") else bn
-                    _cur = conn.cursor(); _cur.execute("""
-                    conn.commit()
-                    _cur.close()
+                    conn.execute("""
+    conn.commit()
                         INSERT INTO iatf16949_evaluation
                         (eval_date,batch_number,risk_based_thinking,defect_prevention,
                          supplier_quality,continuous_improvement,average_score,category,evaluator,notes)
-                        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                        VALUES(?,?,?,?,?,?,?,?,?,?)""",
                         (str(ed),bv,scores['risk_based_thinking'],scores['defect_prevention'],
                          scores['supplier_quality'],scores['continuous_improvement'],
                          avg,get_category(avg),evlr,notes))

@@ -54,9 +54,8 @@ def show():
                         """, unsafe_allow_html=True)
                     if is_admin():
                         if st.button("🗑️ Hapus", key=f"del_iv_{row['id']}"):
-                            _cur = conn.cursor(); _cur.execute("DELETE FROM interview_data WHERE id=%s", (row['id'],))
+                            conn.execute("DELETE FROM interview_data WHERE id=?", (row['id'],))
                             conn.commit()
-                            _cur.close()
                             st.rerun()
 
             if is_admin():
@@ -80,12 +79,11 @@ def show():
                 insights = st.text_area("Key Insights / Highlight", height=80)
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     if name and result:
-                        _cur = conn.cursor(); _cur.execute("""INSERT INTO interview_data
+                        conn.execute("""INSERT INTO interview_data
                         conn.commit()
-                        _cur.close()
                             (interview_date,informant_name,position,work_unit,
                              interview_result,key_insights,finding_category,interviewer)
-                            VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",
+                            VALUES(?,?,?,?,?,?,?,?)""",
                             (str(iv_date),name,pos,unit,result,insights,fcat,ivr))
                         conn.commit()
                         st.success(f"✅ Data wawancara {name} tersimpan!")
