@@ -1,46 +1,27 @@
 """
-database.py — koneksi ke Supabase PostgreSQL
-Data tersimpan permanen di Supabase, tidak hilang saat Streamlit Cloud restart.
+database.py — SQLite dengan st.cache_resource
+Data bertahan selama app running (tidak hilang saat sleep).
+Hanya reset saat deploy ulang ke GitHub.
 """
+import sqlite3
 import os
-import psycopg2
-import psycopg2.extras
+import streamlit as st
+
+DB_PATH = "/tmp/pindad_quality.db"
 
 
-def _get_db_url():
-    """Ambil DATABASE_URL dari Streamlit secrets."""
-    try:
-        import streamlit as st
-        url = st.secrets["DATABASE_URL"]
-        if url:
-            return url
-    except Exception:
-        pass
-    # Fallback dari environment variable
-    return os.environ.get("DATABASE_URL", "")
+@st.cache_resource
+def _get_cached_connection():
+    """Koneksi SQLite yang di-cache — tidak hilang saat sleep."""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
 
 
 def get_connection():
-    url = _get_db_url()
-    if not url:
-        raise ValueError(
-            "DATABASE_URL tidak ditemukan di Streamlit Secrets. "
-            "Tambahkan DATABASE_URL di Settings > Secrets pada Streamlit Cloud."
-        )
-    try:
-        conn = psycopg2.connect(
-            url,
-            cursor_factory=psycopg2.extras.RealDictCursor,
-            connect_timeout=10,
-            sslmode='require'
-        )
-        conn.autocommit = False
-        return conn
-    except psycopg2.OperationalError as e:
-        raise ConnectionError(
-            f"Gagal terhubung ke database Supabase. "
-            f"Periksa DATABASE_URL di Streamlit Secrets.\nDetail: {e}"
-        )
+    return _get_cached_connection()
 
 
 def init_database():
@@ -49,20 +30,20 @@ def init_database():
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         full_name TEXT,
         role TEXT NOT NULL DEFAULT 'viewer',
         email TEXT,
         is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS')),
+        created_at TEXT DEFAULT (datetime('now')),
         last_login TEXT
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS batch_production (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         batch_number TEXT UNIQUE NOT NULL,
         production_date TEXT NOT NULL,
         vehicle_type TEXT DEFAULT 'Kendaraan Multifungsi Nasional',
@@ -74,13 +55,13 @@ def init_database():
         pic TEXT,
         status TEXT DEFAULT 'In Progress',
         notes TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS')),
-        updated_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS defect_records (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         batch_id INTEGER REFERENCES batch_production(id),
         batch_number TEXT,
         defect_type TEXT NOT NULL,
@@ -92,12 +73,12 @@ def init_database():
         follow_up_status TEXT DEFAULT 'Open',
         found_date TEXT,
         resolved_date TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS iso9001_evaluation (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         eval_date TEXT NOT NULL,
         batch_number TEXT,
         process_documentation REAL DEFAULT 0,
@@ -109,12 +90,12 @@ def init_database():
         category TEXT,
         evaluator TEXT,
         notes TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS iatf16949_evaluation (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         eval_date TEXT NOT NULL,
         batch_number TEXT,
         risk_based_thinking REAL DEFAULT 0,
@@ -125,12 +106,12 @@ def init_database():
         category TEXT,
         evaluator TEXT,
         notes TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS engineering_lifecycle (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         eval_date TEXT NOT NULL,
         batch_number TEXT,
         design_control REAL DEFAULT 0,
@@ -143,12 +124,12 @@ def init_database():
         maturity_level TEXT,
         evaluator TEXT,
         notes TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS quality_consistency (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         eval_date TEXT NOT NULL,
         batch_number TEXT,
         quality_uniformity REAL DEFAULT 0,
@@ -160,12 +141,12 @@ def init_database():
         category TEXT,
         evaluator TEXT,
         notes TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS interview_data (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         interview_date TEXT NOT NULL,
         informant_name TEXT NOT NULL,
         position TEXT,
@@ -174,38 +155,36 @@ def init_database():
         key_insights TEXT,
         finding_category TEXT,
         interviewer TEXT,
-        created_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        created_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS about_platform (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         key TEXT UNIQUE NOT NULL,
         value TEXT,
-        updated_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        updated_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS about_photo (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         filename TEXT,
-        photo_data BYTEA,
+        photo_data BLOB,
         mime_type TEXT DEFAULT 'image/jpeg',
-        uploaded_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        uploaded_at TEXT DEFAULT (datetime('now'))
     )""")
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS login_logo (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         filename TEXT,
-        logo_data BYTEA,
+        logo_data BLOB,
         mime_type TEXT DEFAULT 'image/png',
-        uploaded_at TEXT DEFAULT (to_char(now(),'YYYY-MM-DD HH24:MI:SS'))
+        uploaded_at TEXT DEFAULT (datetime('now'))
     )""")
 
     conn.commit()
-    c.close()
-    conn.close()
 
 
 def get_category(score):
