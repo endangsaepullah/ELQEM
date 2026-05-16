@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
+from utils.database import get_connection, get_category
 from utils.styles import section_header, plotly_layout, category_banner
 from utils.auth import is_admin
 from datetime import date
@@ -17,7 +17,9 @@ IND = {
 def show():
     section_header("Modul IATF 16949", "Automotive Quality Management System", "🏭")
     tab1, tab2, tab3 = st.tabs(["📈 Monitoring", "➕ Input Evaluasi", "📋 Riwayat"])
-    df = pd.DataFrame(fetchall(conn, "SELECT * FROM iatf16949_evaluation ORDER BY eval_date DESC"))
+
+    conn = get_connection()
+    df = pd.read_sql("SELECT * FROM iatf16949_evaluation ORDER BY eval_date DESC", conn)
 
     with tab1:
         if df.empty:
@@ -73,7 +75,7 @@ def show():
         if not is_admin():
             st.warning("⛔ Hanya Admin.")
         else:
-            batch_list = pd.DataFrame(fetchall(conn, "SELECT batch_number FROM batch_production ORDER BY production_date DESC"))
+            batch_list = pd.read_sql("SELECT batch_number FROM batch_production ORDER BY production_date DESC", conn)
             opts = ["(Tidak terkait batch)"] + list(batch_list['batch_number'])
             with st.form("iatf_form"):
                 c1,c2,c3 = st.columns(3)
@@ -90,7 +92,8 @@ def show():
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     avg = sum(scores.values())/len(scores)
                     bv  = None if bn.startswith("(") else bn
-                    execute("""
+                    conn.execute("""
+    conn.commit()
                         INSERT INTO iatf16949_evaluation
                         (eval_date,batch_number,risk_based_thinking,defect_prevention,
                          supplier_quality,continuous_improvement,average_score,category,evaluator,notes)
@@ -98,6 +101,7 @@ def show():
                         (str(ed),bv,scores['risk_based_thinking'],scores['defect_prevention'],
                          scores['supplier_quality'],scores['continuous_improvement'],
                          avg,get_category(avg),evlr,notes))
+                    conn.commit()
                     st.success(f"✅ Tersimpan! Skor: {avg:.1f}")
                     st.rerun()
 
@@ -111,3 +115,4 @@ def show():
                 st.download_button("📥 Export CSV", disp.to_csv(index=False).encode(), "iatf16949.csv", "text/csv")
         else:
             st.info("Belum ada data.")
+    conn.close()

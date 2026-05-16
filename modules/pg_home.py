@@ -1,14 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
+from utils.database import get_connection, get_category
 from utils.styles import section_header, plotly_layout
 
 
 def show():
     section_header("Dashboard Utama", "Integrated Engineering Quality Lifecycle Evaluation Platform", "🏠")
-    batch_df = pd.DataFrame(fetchall(conn, "SELECT * FROM batch_production ORDER BY production_date"))
-    defect_df = pd.DataFrame(fetchall(conn, "SELECT * FROM defect_records"))
+
+    conn = get_connection()
+    batch_df = pd.read_sql("SELECT * FROM batch_production ORDER BY production_date", conn)
+    defect_df = pd.read_sql("SELECT * FROM defect_records", conn)
 
     total_batch  = len(batch_df)
     total_units  = int(batch_df['total_units'].sum())  if not batch_df.empty else 0
@@ -17,10 +19,11 @@ def show():
     avg_dr = round(batch_df['defect_rate'].mean(),  2) if not batch_df.empty else 0
     avg_rr = round(batch_df['rework_rate'].mean(),  2) if not batch_df.empty else 0
 
-    iso_s  = pd.DataFrame(fetchall(conn, "SELECT average_score FROM iso9001_evaluation      ORDER BY eval_date DESC LIMIT 1"))
-    iatf_s = pd.DataFrame(fetchall(conn, "SELECT average_score FROM iatf16949_evaluation     ORDER BY eval_date DESC LIMIT 1"))
-    lc_s   = pd.DataFrame(fetchall(conn, "SELECT average_score FROM engineering_lifecycle    ORDER BY eval_date DESC LIMIT 1"))
-    qc_s   = pd.DataFrame(fetchall(conn, "SELECT average_score FROM quality_consistency      ORDER BY eval_date DESC LIMIT 1"))
+    iso_s  = pd.read_sql("SELECT average_score FROM iso9001_evaluation      ORDER BY eval_date DESC LIMIT 1", conn)
+    iatf_s = pd.read_sql("SELECT average_score FROM iatf16949_evaluation     ORDER BY eval_date DESC LIMIT 1", conn)
+    lc_s   = pd.read_sql("SELECT average_score FROM engineering_lifecycle    ORDER BY eval_date DESC LIMIT 1", conn)
+    qc_s   = pd.read_sql("SELECT average_score FROM quality_consistency      ORDER BY eval_date DESC LIMIT 1", conn)
+    conn.close()
 
     iso  = float(iso_s.iloc[0]['average_score'])  if not iso_s.empty  else 0
     iatf = float(iatf_s.iloc[0]['average_score']) if not iatf_s.empty else 0

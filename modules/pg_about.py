@@ -1,6 +1,6 @@
 import streamlit as st
 import base64
-from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
+from utils.database import get_connection
 from utils.styles import section_header
 from utils.auth import is_admin
 
@@ -47,43 +47,55 @@ DEFAULT = {
 
 def db_get(key, default=""):
     try:
-        execute("SELECT value FROM about_platform WHERE key=?", (key,))
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT value FROM about_platform WHERE key=?", (key,))
         row = c.fetchone()
-        c.close();
+        c.close(); conn.close()
         return row["value"] if (row and row["value"]) else default
     except Exception:
         return default
 
 
 def db_set(key, value):
-    execute(
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
         "INSERT INTO about_platform (key,value) VALUES(?,?) "
         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, value)
     )
-    c.close();
+    conn.commit()
+    c.close(); conn.close()
 
 
 def get_photo_b64():
     try:
-        row = fetchone(conn, "SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
+        row = c.fetchone()
+        c.close()
+        conn.close()
         if row and row["photo_data"]:
             data = row["photo_data"]
-            if isinstance(data, str):
-                return "data:" + row["mime_type"] + ";base64," + data
-            return "data:" + row["mime_type"] + ";base64," + base64.b64encode(bytes(data)).decode()
+            b64 = base64.b64encode(data).decode()
+            return "data:" + row["mime_type"] + ";base64," + b64
     except Exception:
         pass
     return None
 
 
 def save_photo(file_bytes, mime_type, filename):
-    import base64 as _b64
-    execute("DELETE FROM about_photo")
-    execute(
+    conn = get_connection()
+    conn.execute("DELETE FROM about_photo")
+    conn.execute(
         "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(?,?,?)",
-        (filename, _b64.b64encode(file_bytes).decode(), mime_type)
+        (filename, file_bytes, mime_type)
     )
+    conn.commit()
+    conn.close()
+    conn.close()
 
 
 def _label(text):
