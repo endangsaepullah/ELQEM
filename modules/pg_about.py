@@ -1,6 +1,6 @@
 import streamlit as st
 import base64
-from utils.database import get_connection
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header
 from utils.auth import is_admin
 
@@ -47,31 +47,25 @@ DEFAULT = {
 
 def db_get(key, default=""):
     try:
-        conn = get_connection()
-        c = conn.cursor()
-        c.execute("SELECT value FROM about_platform WHERE key=?", (key,))
+        execute("SELECT value FROM about_platform WHERE key=?", (key,))
         row = c.fetchone()
-        c.close(); conn.close()
+        c.close();
         return row["value"] if (row and row["value"]) else default
     except Exception:
         return default
 
 
 def db_set(key, value):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute(
+    execute(
         "INSERT INTO about_platform (key,value) VALUES(?,?) "
         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, value)
     )
-    conn.commit()
-    c.close(); conn.close()
+    c.close();
 
 
 def get_photo_b64():
     try:
-        conn = get_connection()
         row = fetchone(conn, "SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
         if row and row["photo_data"]:
             data = row["photo_data"]
@@ -85,14 +79,11 @@ def get_photo_b64():
 
 def save_photo(file_bytes, mime_type, filename):
     import base64 as _b64
-    conn = get_connection()
-    conn.execute("DELETE FROM about_photo")
-    conn.execute(
+    execute("DELETE FROM about_photo")
+    execute(
         "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(?,?,?)",
         (filename, _b64.b64encode(file_bytes).decode(), mime_type)
     )
-    conn.commit()
-    conn.close()
 
 
 def _label(text):

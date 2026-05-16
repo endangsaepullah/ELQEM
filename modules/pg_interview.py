@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, fetchall, fetchone
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header, plotly_layout
 from utils.auth import is_admin
 from datetime import date
@@ -13,8 +13,6 @@ CATS = ['ISO 9001','IATF 16949','Engineering Lifecycle','Konsistensi Mutu',
 def show():
     section_header("Data Wawancara", "Pendalaman Kualitatif Penelitian Tesis", "💬")
     tab1, tab2, tab3 = st.tabs(["📋 Daftar Wawancara","➕ Input Wawancara","📊 Summary Insight"])
-
-    conn = get_connection()
     df = pd.DataFrame(fetchall(conn, "SELECT * FROM interview_data ORDER BY interview_date DESC"))
 
     with tab1:
@@ -54,8 +52,7 @@ def show():
                         """, unsafe_allow_html=True)
                     if is_admin():
                         if st.button("🗑️ Hapus", key=f"del_iv_{row['id']}"):
-                            conn.execute("DELETE FROM interview_data WHERE id=?", (row['id'],))
-                            conn.commit()
+                            execute("DELETE FROM interview_data WHERE id=?", (row['id'],))
                             st.rerun()
 
             if is_admin():
@@ -79,13 +76,11 @@ def show():
                 insights = st.text_area("Key Insights / Highlight", height=80)
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     if name and result:
-                        conn.execute("""INSERT INTO interview_data
-                        conn.commit()
+                        execute("""INSERT INTO interview_data
                             (interview_date,informant_name,position,work_unit,
                              interview_result,key_insights,finding_category,interviewer)
                             VALUES(?,?,?,?,?,?,?,?)""",
                             (str(iv_date),name,pos,unit,result,insights,fcat,ivr))
-                        conn.commit()
                         st.success(f"✅ Data wawancara {name} tersimpan!")
                         st.rerun()
                     else:
@@ -113,4 +108,3 @@ def show():
                             st.markdown(f"**{i}.** {ins}")
         else:
             st.info("Belum ada data.")
-    conn.close()

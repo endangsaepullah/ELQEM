@@ -1,15 +1,12 @@
 import streamlit as st
-from utils.database import get_connection
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header
 from utils.auth import require_admin, is_admin, hash_password
 
 
 def db_write(sql, params=()):
     """Helper: buka koneksi baru, execute, commit, tutup."""
-    conn = get_connection()
-    conn.execute(sql, params)
-    conn.commit()
-    conn.close()
+    execute(sql, params)
 
 
 def show():
@@ -21,8 +18,7 @@ def show():
 
     with tab1:
         # Baca data dengan koneksi sendiri
-        conn_r = get_connection()
-        rows = fetchall(conn_r,
+        rows = fetchall(
             "SELECT id,username,full_name,role,email,is_active,created_at,last_login "
             "FROM users ORDER BY id"
         )

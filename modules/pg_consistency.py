@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, fetchall, fetchone, get_category
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header, plotly_layout, category_banner
 from utils.auth import is_admin
 from datetime import date
@@ -18,8 +18,6 @@ IND = {
 def show():
     section_header("Konsistensi Mutu", "Quality Consistency & Production Stability", "✅")
     tab1, tab2, tab3 = st.tabs(["📈 Monitoring", "➕ Input Evaluasi", "📋 Riwayat"])
-
-    conn = get_connection()
     df       = pd.DataFrame(fetchall(conn, "SELECT * FROM quality_consistency ORDER BY eval_date DESC"))
     batch_df = pd.DataFrame(fetchall(conn, "SELECT * FROM batch_production ORDER BY production_date"))
 
@@ -105,8 +103,7 @@ def show():
                 if st.form_submit_button("💾 Simpan", use_container_width=True, type="primary"):
                     avg = sum(scores.values())/len(scores)
                     bv  = None if bn.startswith("(") else bn
-                    conn.execute("""
-    conn.commit()
+                    execute("""
                         INSERT INTO quality_consistency
                         (eval_date,batch_number,quality_uniformity,low_defect_rate,
                          inter_batch_stability,low_rework_rate,spec_conformance,
@@ -115,7 +112,6 @@ def show():
                         (str(ed),bv,scores['quality_uniformity'],scores['low_defect_rate'],
                          scores['inter_batch_stability'],scores['low_rework_rate'],
                          scores['spec_conformance'],avg,get_category(avg),evlr,notes))
-                    conn.commit()
                     st.success(f"✅ Tersimpan! Skor: {avg:.1f}")
                     st.rerun()
 
@@ -132,4 +128,3 @@ def show():
                 st.download_button("📥 Export CSV", disp.to_csv(index=False).encode(), "quality_consistency.csv", "text/csv")
         else:
             st.info("Belum ada data.")
-    conn.close()

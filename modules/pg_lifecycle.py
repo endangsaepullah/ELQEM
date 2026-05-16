@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, fetchall, fetchone, get_lifecycle_maturity
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header, plotly_layout
 from utils.auth import is_admin
 from datetime import date
@@ -38,8 +38,6 @@ def show():
     """, unsafe_allow_html=True)
 
     tab1, tab2, tab3 = st.tabs(["📈 Monitoring", "➕ Input Evaluasi", "📋 Riwayat"])
-
-    conn = get_connection()
     df = pd.DataFrame(fetchall(conn, "SELECT * FROM engineering_lifecycle ORDER BY eval_date DESC"))
 
     with tab1:
@@ -163,8 +161,7 @@ def show():
                     avg = sum(scores.values())/len(scores)
                     mat = get_lifecycle_maturity(avg)
                     bv  = None if bn.startswith("(") else bn
-                    conn.execute("""
-    conn.commit()
+                    execute("""
                         INSERT INTO engineering_lifecycle
                         (eval_date,batch_number,design_control,change_control,
                          verification_validation,integration_process,traceability,
@@ -174,7 +171,6 @@ def show():
                          scores['verification_validation'],scores['integration_process'],
                          scores['traceability'],scores['design_change_communication'],
                          avg,mat,evlr,notes))
-                    conn.commit()
                     st.success(f"✅ Tersimpan! Skor: {avg:.1f} | Maturity: {mat}")
                     st.rerun()
 
@@ -191,4 +187,3 @@ def show():
                 st.download_button("📥 Export CSV", disp.to_csv(index=False).encode(), "eng_lifecycle.csv", "text/csv")
         else:
             st.info("Belum ada data.")
-    conn.close()

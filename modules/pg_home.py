@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, fetchall, fetchone, get_category
+from utils.database import fetchall, fetchone, execute, get_category, get_lifecycle_maturity
 from utils.styles import section_header, plotly_layout
 
 
 def show():
     section_header("Dashboard Utama", "Integrated Engineering Quality Lifecycle Evaluation Platform", "🏠")
-
-    conn = get_connection()
     batch_df = pd.DataFrame(fetchall(conn, "SELECT * FROM batch_production ORDER BY production_date"))
     defect_df = pd.DataFrame(fetchall(conn, "SELECT * FROM defect_records"))
 
@@ -23,7 +21,6 @@ def show():
     iatf_s = pd.DataFrame(fetchall(conn, "SELECT average_score FROM iatf16949_evaluation     ORDER BY eval_date DESC LIMIT 1"))
     lc_s   = pd.DataFrame(fetchall(conn, "SELECT average_score FROM engineering_lifecycle    ORDER BY eval_date DESC LIMIT 1"))
     qc_s   = pd.DataFrame(fetchall(conn, "SELECT average_score FROM quality_consistency      ORDER BY eval_date DESC LIMIT 1"))
-    conn.close()
 
     iso  = float(iso_s.iloc[0]['average_score'])  if not iso_s.empty  else 0
     iatf = float(iatf_s.iloc[0]['average_score']) if not iatf_s.empty else 0
