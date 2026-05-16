@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, get_category
+from utils.database import get_connection, fetchall, fetchone, get_category
 from utils.styles import section_header, plotly_layout, category_banner
 from utils.auth import is_admin
 from datetime import date
@@ -20,8 +20,8 @@ def show():
     tab1, tab2, tab3 = st.tabs(["📈 Monitoring", "➕ Input Evaluasi", "📋 Riwayat"])
 
     conn = get_connection()
-    df       = pd.read_sql("SELECT * FROM quality_consistency ORDER BY eval_date DESC", conn)
-    batch_df = pd.read_sql("SELECT * FROM batch_production ORDER BY production_date",    conn)
+    df       = pd.DataFrame(fetchall(conn, "SELECT * FROM quality_consistency ORDER BY eval_date DESC"))
+    batch_df = pd.DataFrame(fetchall(conn, "SELECT * FROM batch_production ORDER BY production_date"))
 
     with tab1:
         if df.empty:

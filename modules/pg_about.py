@@ -72,29 +72,26 @@ def db_set(key, value):
 def get_photo_b64():
     try:
         conn = get_connection()
-        c = conn.cursor()
-        c.execute("SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
-        row = c.fetchone()
-        c.close()
-        conn.close()
+        row = fetchone(conn, "SELECT photo_data, mime_type FROM about_photo ORDER BY id DESC LIMIT 1")
         if row and row["photo_data"]:
             data = row["photo_data"]
-            b64 = base64.b64encode(data).decode()
-            return "data:" + row["mime_type"] + ";base64," + b64
+            if isinstance(data, str):
+                return "data:" + row["mime_type"] + ";base64," + data
+            return "data:" + row["mime_type"] + ";base64," + base64.b64encode(bytes(data)).decode()
     except Exception:
         pass
     return None
 
 
 def save_photo(file_bytes, mime_type, filename):
+    import base64 as _b64
     conn = get_connection()
     conn.execute("DELETE FROM about_photo")
     conn.execute(
         "INSERT INTO about_photo (filename,photo_data,mime_type) VALUES(?,?,?)",
-        (filename, file_bytes, mime_type)
+        (filename, _b64.b64encode(file_bytes).decode(), mime_type)
     )
     conn.commit()
-    conn.close()
     conn.close()
 
 

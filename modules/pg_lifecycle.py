@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, get_lifecycle_maturity
+from utils.database import get_connection, fetchall, fetchone, get_lifecycle_maturity
 from utils.styles import section_header, plotly_layout
 from utils.auth import is_admin
 from datetime import date
@@ -40,7 +40,7 @@ def show():
     tab1, tab2, tab3 = st.tabs(["📈 Monitoring", "➕ Input Evaluasi", "📋 Riwayat"])
 
     conn = get_connection()
-    df = pd.read_sql("SELECT * FROM engineering_lifecycle ORDER BY eval_date DESC", conn)
+    df = pd.DataFrame(fetchall(conn, "SELECT * FROM engineering_lifecycle ORDER BY eval_date DESC"))
 
     with tab1:
         if df.empty:
@@ -145,7 +145,7 @@ def show():
         if not is_admin():
             st.warning("⛔ Hanya Admin.")
         else:
-            batch_list = pd.read_sql("SELECT batch_number FROM batch_production ORDER BY production_date DESC", conn)
+            batch_list = pd.DataFrame(fetchall(conn, "SELECT batch_number FROM batch_production ORDER BY production_date DESC"))
             opts = ["(Tidak terkait batch)"] + list(batch_list['batch_number'])
             with st.form("lc_form"):
                 c1,c2,c3 = st.columns(3)

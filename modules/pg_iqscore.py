@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection, get_category
+from utils.database import get_connection, fetchall, fetchone, get_category
 from utils.styles import section_header, plotly_layout
 
 WEIGHTS = {'ISO 9001 (X1)': 0.25, 'IATF 16949 (X2)': 0.20,
@@ -28,11 +28,11 @@ def show():
     section_header("Integrated Quality Score", "Total Quality Lifecycle Score & Rekomendasi Otomatis", "🎯")
 
     conn = get_connection()
-    iso_r  = pd.read_sql("SELECT * FROM iso9001_evaluation        ORDER BY eval_date DESC LIMIT 1", conn)
-    iatf_r = pd.read_sql("SELECT * FROM iatf16949_evaluation      ORDER BY eval_date DESC LIMIT 1", conn)
-    lc_r   = pd.read_sql("SELECT * FROM engineering_lifecycle     ORDER BY eval_date DESC LIMIT 1", conn)
-    qc_r   = pd.read_sql("SELECT * FROM quality_consistency       ORDER BY eval_date DESC LIMIT 1", conn)
-    b_r    = pd.read_sql("SELECT defect_rate FROM batch_production ORDER BY production_date DESC LIMIT 3", conn)
+    iso_r  = pd.DataFrame(fetchall(conn, "SELECT * FROM iso9001_evaluation        ORDER BY eval_date DESC LIMIT 1"))
+    iatf_r = pd.DataFrame(fetchall(conn, "SELECT * FROM iatf16949_evaluation      ORDER BY eval_date DESC LIMIT 1"))
+    lc_r   = pd.DataFrame(fetchall(conn, "SELECT * FROM engineering_lifecycle     ORDER BY eval_date DESC LIMIT 1"))
+    qc_r   = pd.DataFrame(fetchall(conn, "SELECT * FROM quality_consistency       ORDER BY eval_date DESC LIMIT 1"))
+    b_r    = pd.DataFrame(fetchall(conn, "SELECT defect_rate FROM batch_production ORDER BY production_date DESC LIMIT 3"))
     conn.close()
 
     iso  = float(iso_r.iloc[0]['average_score'])  if not iso_r.empty  else 0

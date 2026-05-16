@@ -22,11 +22,10 @@ def show():
     with tab1:
         # Baca data dengan koneksi sendiri
         conn_r = get_connection()
-        rows = conn_r.execute(
+        rows = fetchall(conn_r,
             "SELECT id,username,full_name,role,email,is_active,created_at,last_login "
             "FROM users ORDER BY id"
-        ).fetchall()
-        conn_r.close()
+        )
 
         for row in rows:
             rc = "#00d4ff" if row["role"] == "admin" else "#ffd700"

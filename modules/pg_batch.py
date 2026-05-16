@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection
+from utils.database import get_connection, fetchall, fetchone
 from utils.styles import section_header, plotly_layout
 from utils.auth import is_admin
 from datetime import date
@@ -19,8 +19,8 @@ def show():
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Monitoring","➕ Input Batch","🔍 Input Defect","📋 Data Defect"])
 
     conn = get_connection()
-    batch_df  = pd.read_sql("SELECT * FROM batch_production ORDER BY production_date DESC", conn)
-    defect_df = pd.read_sql("SELECT * FROM defect_records ORDER BY created_at DESC",        conn)
+    batch_df  = pd.DataFrame(fetchall(conn, "SELECT * FROM batch_production ORDER BY production_date DESC"))
+    defect_df = pd.DataFrame(fetchall(conn, "SELECT * FROM defect_records ORDER BY created_at DESC"))
 
     with tab1:
         cf1, cf2 = st.columns(2)

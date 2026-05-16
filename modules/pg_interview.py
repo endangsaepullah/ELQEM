@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.database import get_connection
+from utils.database import get_connection, fetchall, fetchone
 from utils.styles import section_header, plotly_layout
 from utils.auth import is_admin
 from datetime import date
@@ -15,7 +15,7 @@ def show():
     tab1, tab2, tab3 = st.tabs(["📋 Daftar Wawancara","➕ Input Wawancara","📊 Summary Insight"])
 
     conn = get_connection()
-    df = pd.read_sql("SELECT * FROM interview_data ORDER BY interview_date DESC", conn)
+    df = pd.DataFrame(fetchall(conn, "SELECT * FROM interview_data ORDER BY interview_date DESC"))
 
     with tab1:
         if df.empty:
