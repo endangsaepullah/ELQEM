@@ -1,7 +1,7 @@
 import streamlit as st
 import hashlib
 import base64
-from utils.database import get_connection
+from utils.database import get_connection, fetchone
 from datetime import datetime
 
 
@@ -15,9 +15,8 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def create_default_admin():
     conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE username = 'admin'")
-    if not c.fetchone():
+    existing = fetchone(conn, "SELECT id FROM users WHERE username = 'admin'")
+    if not existing:
         conn.execute(
             "INSERT INTO users (username,password_hash,full_name,role,email,is_active)"
             " VALUES (?,?,?,?,?,?)",
@@ -28,25 +27,24 @@ def create_default_admin():
 
 def authenticate(username: str, password: str):
     conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,))
-    user = c.fetchone()
+    user = fetchone(conn, "SELECT * FROM users WHERE username=? AND is_active=1", (username,))
     if user and verify_password(password, user['password_hash']):
-        conn.execute("UPDATE users SET last_login = ? WHERE id = ?",
+        conn.execute("UPDATE users SET last_login=? WHERE id=?",
                      (datetime.now().isoformat(), user['id']))
         conn.commit()
-        return dict(user)
+        return user
     return None
 
 
 def get_login_logo_b64():
     try:
         conn = get_connection()
-        c = conn.cursor()
-        c.execute("SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
-        row = c.fetchone()
+        row = fetchone(conn, "SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
         if row and row['logo_data']:
-            b64 = base64.b64encode(row['logo_data']).decode()
+            data = row['logo_data']
+            if isinstance(data, str):
+                return "data:" + row['mime_type'] + ";base64," + data
+            b64 = base64.b64encode(bytes(data)).decode()
             return "data:" + row['mime_type'] + ";base64," + b64
     except Exception:
         pass
@@ -54,11 +52,12 @@ def get_login_logo_b64():
 
 
 def save_login_logo(file_bytes, mime_type, filename):
+    import base64 as b64mod
     conn = get_connection()
     conn.execute("DELETE FROM login_logo")
     conn.execute(
         "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (?,?,?)",
-        (filename, file_bytes, mime_type)
+        (filename, b64mod.b64encode(file_bytes).decode(), mime_type)
     )
     conn.commit()
 
