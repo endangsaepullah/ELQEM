@@ -1,7 +1,7 @@
 import streamlit as st
 import hashlib
 import base64
-from utils.database import fetchone, execute
+from utils.database import get_connection
 from datetime import datetime
 
 
@@ -14,42 +14,59 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 def create_default_admin():
-    existing = fetchone("SELECT id FROM users WHERE username='admin'")
-    if not existing:
-        execute(
-            "INSERT INTO users (username,password_hash,full_name,role,email,is_active) VALUES (?,?,?,?,?,?)",
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE username = 'admin'")
+    if not c.fetchone():
+        conn.execute(
+            "INSERT INTO users (username,password_hash,full_name,role,email,is_active)"
+            " VALUES (?,?,?,?,?,?)",
             ('admin', hash_password('admin123'), 'Administrator', 'admin', 'admin@pindad.com', 1)
         )
+        conn.commit()
 
 
 def authenticate(username: str, password: str):
-    user = fetchone("SELECT * FROM users WHERE username=? AND is_active=1", (username,))
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,))
+    user = c.fetchone()
     if user and verify_password(password, user['password_hash']):
-        execute("UPDATE users SET last_login=? WHERE id=?",
-                (datetime.now().isoformat(), user['id']))
-        return user
+        conn.execute("UPDATE users SET last_login = ? WHERE id = ?",
+                     (datetime.now().isoformat(), user['id']))
+        conn.commit()
+        return dict(user)
     return None
 
 
 def get_login_logo_b64():
     try:
-        row = fetchone("SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT logo_data, mime_type FROM login_logo ORDER BY id DESC LIMIT 1")
+        row = c.fetchone()
         if row and row['logo_data']:
-            return "data:" + row['mime_type'] + ";base64," + row['logo_data']
+            b64 = base64.b64encode(row['logo_data']).decode()
+            return "data:" + row['mime_type'] + ";base64," + b64
     except Exception:
         pass
     return None
 
 
 def save_login_logo(file_bytes, mime_type, filename):
-    b64 = base64.b64encode(file_bytes).decode()
-    execute("DELETE FROM login_logo")
-    execute("INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (?,?,?)",
-            (filename, b64, mime_type))
+    conn = get_connection()
+    conn.execute("DELETE FROM login_logo")
+    conn.execute(
+        "INSERT INTO login_logo (filename,logo_data,mime_type) VALUES (?,?,?)",
+        (filename, file_bytes, mime_type)
+    )
+    conn.commit()
 
 
 def delete_login_logo():
-    execute("DELETE FROM login_logo")
+    conn = get_connection()
+    conn.execute("DELETE FROM login_logo")
+    conn.commit()
 
 
 def login_page():
@@ -68,19 +85,22 @@ def login_page():
                 '<img src="' + logo_src + '" style="width:120px;height:120px;'
                 'object-fit:contain;border-radius:16px;'
                 'box-shadow:0 0 32px rgba(0,212,255,0.25);"></div>',
-                unsafe_allow_html=True)
+                unsafe_allow_html=True
+            )
         else:
             st.markdown(
                 '<div style="text-align:center;margin-bottom:1.25rem;">'
                 '<div style="font-size:3.5rem;">&#9881;&#65039;</div></div>',
-                unsafe_allow_html=True)
+                unsafe_allow_html=True
+            )
         st.markdown(
             '<div style="text-align:center;margin-bottom:2rem;">'
             '<div style="font-family:Rajdhani,sans-serif;font-size:1.8rem;font-weight:700;'
             'color:#00d4ff;letter-spacing:3px;">IQLE PLATFORM</div>'
             '<div style="font-size:0.7rem;color:#4a6fa5;letter-spacing:3px;'
             'text-transform:uppercase;margin-top:4px;">PT Pindad (Persero) · Quality 4.0</div>'
-            '</div>', unsafe_allow_html=True)
+            '</div>', unsafe_allow_html=True
+        )
         with st.form("login_form"):
             username = st.text_input("Username", placeholder="Masukkan username")
             password = st.text_input("Password", type="password", placeholder="Masukkan password")
@@ -101,7 +121,8 @@ def login_page():
             'font-size:0.72rem;color:#3d5470;letter-spacing:2px;line-height:1.8;'
             'text-transform:uppercase;">IQLE Platform &nbsp;&bull;&nbsp; Prototype Akademik Magister Teknik'
             '<br>PT Pindad (Persero) &nbsp;&bull;&nbsp; Universitas Pertahanan RI</div>',
-            unsafe_allow_html=True)
+            unsafe_allow_html=True
+        )
 
 
 def logout():
